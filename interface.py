@@ -4,4 +4,14 @@ from PyQt5.QtWidgets import *
 
 import sys
 
-from api_key import API_KEY
+from ui import program_ui
+
+class MainApplication(QDialog, program_ui.Ui_main_window):
+    def __init__(self):
+        QDialog.__init__(self)
+        self.setupUi(self)
+
+app = QApplication(sys.argv)
+main_window = MainApplication()
+main_window.show()
+app.exec_()

@@ -11,7 +11,8 @@ class MainApplication(QDialog, program_ui.Ui_main_window):
         QDialog.__init__(self)
         self.setupUi(self)
 
-app = QApplication(sys.argv)
-main_window = MainApplication()
-main_window.show()
-app.exec_()
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    main_window = MainApplication()
+    main_window.show()
+    app.exec_()

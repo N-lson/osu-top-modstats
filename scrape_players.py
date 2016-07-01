@@ -14,11 +14,12 @@ def scrape(num_players):
 
     # Handle invalid input
     if num_players%50 != 0:
-        num_players = 50
+        print("num_players must be divisible by 50")
+        return None
 
-    max_page = num_players//50
+    max_page = num_players//50 + 1
 
-    for i in range(1, max_page+1):
+    for i in range(1, max_page):
         payload = {"m": 0, "page": i}
         r = requests.get(url, params=payload)
         page = BeautifulSoup(r.text, "lxml")
@@ -33,5 +34,14 @@ def scrape(num_players):
     return players
 
 
+def write_csv(players):
+    with open("players.csv", "w") as f:
+        w = csv.writer(f)
+        for name, id in players.items():
+            w.writerow([name, id])
+
+
 if __name__ == "__main__":
     players = scrape(int(sys.argv[1]))
+    if players is not None:
+        write_csv(players)

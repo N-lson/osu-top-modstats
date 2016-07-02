@@ -1,5 +1,4 @@
 from time import sleep
-from collections import OrderedDict
 import csv
 import re
 import sys
@@ -10,7 +9,7 @@ from bs4 import BeautifulSoup
 
 def scrape(num_players):
     url = "https://osu.ppy.sh/p/pp/"
-    players = OrderedDict()
+    players = {}
 
     # Handle invalid input
     if num_players%50 != 0:
@@ -20,6 +19,7 @@ def scrape(num_players):
     max_page = num_players//50 + 1
 
     for i in range(1, max_page):
+        print("Currently processing page {}".format(i))
         payload = {"m": 0, "page": i}
         r = requests.get(url, params=payload)
         page = BeautifulSoup(r.text, "lxml")
@@ -35,10 +35,10 @@ def scrape(num_players):
 
 
 def write_csv(players):
-    with open("players.csv", "w") as f:
+    with open("players.csv", "w", newline="") as f:
         w = csv.writer(f)
-        for name, id in players.items():
-            w.writerow([name, id])
+        for user_name, user_id in players.items():
+            w.writerow([user_name, user_id])
 
 
 if __name__ == "__main__":

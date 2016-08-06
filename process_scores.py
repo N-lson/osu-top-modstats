@@ -1,7 +1,7 @@
 from time import sleep
 import csv
-import sys
 import json
+import sys
 import operator
 
 import requests
@@ -27,8 +27,6 @@ all_mods = {
     "PF": 1 << 14
 }
 
-mod_frequencies = {}
-map_frequencies = {}
 
 def read_csv():
     players = {}
@@ -42,14 +40,29 @@ def read_csv():
     return players
 
 
-def add_map(map):
-    for data in map:
-        map_name = "{} - {} [{}] ({})".format(data["artist"], data["title"], data["version"], data["creator"])
+def convert_ids(beatmap_ids):
+    url = "https://osu.ppy.sh/api/get_beatmaps"
+    map_frequencies = {}
+    for i, id in enumerate(beatmap_ids):
+        success = False
+        while not success:
+            try:
+                payload = {"k": API_KEY, "b": id, "limit": 1}
+                r = requests.get(url, params=payload)
+                r.raise_for_status()
+                map = json.loads(r.text)
+                success = True
+            except Exception as e:
+                print("Beatmap {} | Error: {}".format(id, e), file=sys.stderr)
 
-    map_frequencies.setdefault(map_name, 0)
-    map_frequencies[map_name] += 1
+        for data in map:
+            map_name = "{} - {} [{}] ({})".format(data["artist"], data["title"], data["version"], data["creator"])
+            print("[{}/{}] | {} | Freq: {}".format(i, len(beatmap_ids), map_name, beatmap_ids[id]))
+            map_frequencies[map_name] = beatmap_ids[id]
 
-    return map_name
+        sleep(0.9)
+
+    return map_frequencies
 
 
 def add_mod(mods):
@@ -66,43 +79,49 @@ def add_mod(mods):
     mod_frequencies.setdefault(mod_combination, 0)
     mod_frequencies[mod_combination] += 1
 
-    return mod_combination
+
+def add_map_id(beatmap_id):
+    beatmap_ids.setdefault(beatmap_id, 0)
+    beatmap_ids[beatmap_id] += 1
 
 
-if __name__ == "__main__":
-    players = read_csv()
-    url_best = "https://osu.ppy.sh/api/get_user_best"
-    url_map = "https://osu.ppy.sh/api/get_beatmaps"
+def get_scores(players):
+    url = "https://osu.ppy.sh/api/get_user_best"
 
     for i, user_name in enumerate(players):
-        print("Obtaining scores for {} [Progress: {}/{}]".format(user_name, i+1, len(players)))
+        print("Obtaining scores for {} [Progress: {}/{}]".format(user_name, i + 1, len(players)))
         payload = {"k": API_KEY, "u": user_name, "m": 0, "limit": 10, "type": "string"}
-        r = requests.get(url_best, params=payload)
+        r = requests.get(url, params=payload)
         scores = json.loads(r.text)
 
         for score in scores:
-            beatmap = score["beatmap_id"]
-            payload = {"k": API_KEY, "b": beatmap, "limit": 1}
-            r = requests.get(url_map, params=payload)
-            map = json.loads(r.text)
-            current_map = add_map(map)
+            beatmap_id = score["beatmap_id"]
 
             mods = int(score["enabled_mods"])
-            current_mods = add_mod(mods)
-            print(current_map, current_mods)
-            sleep(0.5)
+            add_mod(mods)
+            add_map_id(beatmap_id)
 
-        sleep(1)
+        sleep(0.8)
+
+if __name__ == "__main__":
+    players = read_csv()
+
+    mod_frequencies = {}
+    beatmap_ids = {}
+
+    get_scores(players)
+
+    map_frequencies = convert_ids(beatmap_ids)
 
     ordered_maps = sorted(map_frequencies.items(), key=operator.itemgetter(1), reverse=True)
     ordered_mods = sorted(mod_frequencies.items(), key=operator.itemgetter(1), reverse=True)
 
     with open("map_frequencies.csv", "w", newline="") as f:
         w = csv.writer(f)
-        for map_name, frequency in map_frequencies.items():
+        for map_name, frequency in ordered_maps:
             w.writerow([map_name, frequency])
 
     with open("mod_frequencies.csv", "w", newline="") as f:
         w = csv.writer(f)
-        for mod_combination, frequency in mod_frequencies.items():
+        for mod_combination, frequency in ordered_mods:
             w.writerow([mod_combination, frequency])
